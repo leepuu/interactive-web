@@ -1,28 +1,79 @@
 const canvas = document.querySelector('canvas');
 const ctx = canvas.getContext('2d')
 const dpr = window.devicePixelRatio
+let canvasWidth
+let canvasHeight
+let particles
 
-const canvasWidth = innerWidth
-const canvasHeight = innerHeight
+function init(){
+  canvasWidth = innerWidth
+  canvasHeight = innerHeight
+  
+  canvas.style.width = canvasWidth + 'px'
+  canvas.style.height = canvasHeight + 'px'
+  
+  canvas.width = canvasWidth * dpr
+  canvas.height = canvasHeight * dpr
+  
+  ctx.scale(dpr, dpr)
+  
 
-canvas.style.width = canvasWidth + 'px'
-canvas.style.height = canvasHeight + 'px'
+  particles = []
+  const TOTAL = canvasWidth / 100
 
-canvas.width = canvasWidth * dpr
-canvas.height = canvasHeight * dpr
+  for(let i = 0; i < TOTAL; i++){
+    const x = randomNumBetween(0, canvasWidth) // 랜덤 x좌표
+    const y = randomNumBetween(0, canvasHeight) // 랜덤 y좌표
+    const radius = randomNumBetween(50, 100) // 랜덤 크기
+    const vy = randomNumBetween(1, 5)
+    const particle = new Particle(x, y, radius, vy)
+    particles.push(particle)
+  }
+}
 
-ctx.scale(dpr, dpr)
+const feGaussianBlur = document.querySelector('feGaussianBlur')
+const feColorMatrix = document.querySelector('feColorMatrix')
 
+const controls = new function(){
+  this.blurValue = 40
+  this.alphaChannel = 100
+  this.alphaOffset = -23
+  this.acc = 1.03
+}
+
+let gui = new dat.GUI()
+
+const f1 = gui.addFolder('Gooey Effect')
+f1.open()
+
+f1.add(controls, 'blurValue', 0, 100).onChange(value => {
+  feGaussianBlur.setAttribute('stdDeviation', value)
+})
+
+f1.add(controls, 'alphaChannel', 1, 200).onChange(value => {
+  feColorMatrix.setAttribute('values', `1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${value} ${controls.alphaOffset}`)
+})
+
+f1.add(controls, 'alphaOffset', -40, 40).onChange(value => {
+  feColorMatrix.setAttribute('values', `1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${controls.alphaChannel} ${value}`)
+})
+
+const f2 = gui.addFolder('Particle Property')
+f2.add(controls, 'acc', 1, 1.5, 0.01).onChange(value => {
+  particles.forEach(particle => particle.acc = value)
+})
 
 class Particle{
-  constructor(x, y, radius, vy){ // 클래스의 인스턴스 객체를 생성하고 초기화하기 위한 필수 메서드
+  constructor(x, y, radius, vy){
     this.x = x
     this.y = y
     this.radius = radius
     this.vy = vy
+    this.acc = 1.05
   }
 
-  update(){ // 각각의 파티클의 constructor의 초기화된 값을 변경
+  update(){
+    this.vy *= this.acc
     this.y += this.vy;
   }
 
@@ -35,22 +86,9 @@ class Particle{
   }
 }
 
-const TOTAL = 20
 const randomNumBetween = (min, max) => { // 랜덤 좌표값
   return Math.random() * (max - min + 1) + min
 }
-
-let particles = []
-
-for(let i = 0; i < TOTAL; i++){
-  const x = randomNumBetween(0, canvasWidth) // 랜덤 x좌표
-  const y = randomNumBetween(0, canvasHeight) // 랜덤 y좌표
-  const radius = randomNumBetween(50, 100) // 랜덤 크기
-  const vy = randomNumBetween(1, 5)
-  const particle = new Particle(x, y, radius, vy)
-  particles.push(particle)
-}
-console.log(particles)
 
 let interval = 1000 / 60
 let now, delta
@@ -80,4 +118,11 @@ function animate(){
   then = now - (delta % interval)
 }
 
-animate();
+window.addEventListener('load', () => {
+  init()
+  animate();
+})
+
+window.addEventListener('resize', () => {
+  init()
+})
